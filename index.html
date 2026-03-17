@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoltSafe Mobile & Desktop</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --safety-green: #00ffaa;
+            --alert-orange: #f6ad55;
+            --alert-red: #ff4b2b;
+            --bg-deep: #0f172a;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body, html {
+            margin: 0; padding: 0; min-height: 100%;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-deep); color: white;
+        }
+
+        /* Responsive Layout Container */
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Sidebar / Header (Adapts for Mobile) */
+        .sidebar {
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 20px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand { font-size: 1.5rem; font-weight: 800; color: var(--safety-green); }
+
+        /* Main Area */
+        .main { padding: 20px 5%; flex-grow: 1; }
+
+        /* Alert System */
+        .alert-area { min-height: 60px; margin-bottom: 15px; }
+        .alert {
+            padding: 12px 20px; border-radius: 12px; display: flex; 
+            justify-content: space-between; align-items: center; 
+            margin-bottom: 10px; font-size: 0.9rem;
+            animation: slideIn 0.3s ease;
+        }
+        .alert-warning { background: rgba(246, 173, 85, 0.2); border-left: 4px solid var(--alert-orange); color: #fbd38d; }
+        .alert-critical { background: rgba(255, 75, 43, 0.2); border-left: 4px solid var(--alert-red); color: #feb2b2; }
+        
+        @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* Responsive Grid (1 col on mobile, 2 on desktop) */
+        .grid { 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 20px; 
+        }
+
+        @media (min-width: 768px) {
+            .grid { grid-template-columns: 1fr 1fr; }
+            .sidebar { border-bottom: none; border-right: 1px solid var(--glass-border); width: 250px; height: 100vh; flex-direction: column; justify-content: flex-start; position: fixed; }
+            .main { margin-left: 250px; padding: 40px; }
+        }
+
+        .card { 
+            background: var(--glass); 
+            border: 1px solid var(--glass-border); 
+            padding: 25px; 
+            border-radius: 24px; 
+            backdrop-filter: blur(10px); 
+        }
+
+        /* Halo Toggle */
+        .halo {
+            width: 100px; height: 100px; border-radius: 50%;
+            border: 6px solid var(--safety-green); display: flex;
+            align-items: center; justify-content: center; transition: 0.4s;
+            cursor: pointer; margin: 0 auto 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 170, 0.1);
+        }
+        .halo.off { border-color: #4a5568; opacity: 0.4; box-shadow: none; }
+
+        /* Inputs & Buttons */
+        .controls-row { display: flex; gap: 10px; align-items: center; margin-top: 15px; }
+        input[type="number"] {
+            background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border);
+            color: white; padding: 12px; border-radius: 12px; width: 70px; font-size: 1rem;
+        }
+        
+        .btn {
+            background: var(--safety-green); border: none; padding: 14px 20px;
+            border-radius: 12px; font-weight: 700; cursor: pointer; color: #0f172a; width: 100%;
+        }
+        .btn-ghost { background: transparent; border: 1px solid var(--glass-border); color: white; width: auto; }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="sidebar">
+        <div class="brand">VoltSafe</div>
+        <div style="font-size: 0.8rem; opacity: 0.6;">System Active</div>
+    </div>
+
+    <div class="main">
+        <div class="alert-area" id="alertContainer"></div>
+
+        <div class="grid">
+            <div class="card" style="text-align: center;">
+                <div id="mainHalo" class="halo" onclick="togglePower()">
+                    <span id="haloText" style="font-weight: 800; font-size: 0.8rem;">ACTIVE</span>
+                </div>
+                <h3 id="statusTitle" style="margin: 10px 0;">Monitoring</h3>
+                <p id="timerDisplay" style="color: var(--safety-green); font-family: monospace; font-size: 1.1rem; margin-bottom: 20px;">00:00:00</p>
+                <button class="btn" id="powerBtn" onclick="togglePower()">Turn Off</button>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-top: 0;">Safety Settings</h3>
+                <p style="font-size: 0.85rem; opacity: 0.7;">Auto-cut timer (minutes):</p>
+                
+                <div class="controls-row">
+                    <input type="number" id="intervalInput" value="30" min="1">
+                    <button class="btn btn-ghost" onclick="updateSettings()">Save</button>
+                </div>
+
+                <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid var(--glass-border);">
+                    <p style="font-size: 0.8rem;">Current: <strong id="profileName" style="color: var(--safety-green);">Standard (30m)</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let isOn = true;
+    let secondsActive = 0;
+    let autoOffLimit = 30; 
+    let alertShown = false;
+
+    setInterval(() => {
+        if (isOn) {
+            secondsActive++;
+            updateTimerDisplay();
+            checkSafetyLogic();
+        }
+    }, 1000);
+
+    function updateTimerDisplay() {
+        const hrs = Math.floor(secondsActive / 3600).toString().padStart(2, '0');
+        const mins = Math.floor((secondsActive % 3600) / 60).toString().padStart(2, '0');
+        const secs = (secondsActive % 60).toString().padStart(2, '0');
+        document.getElementById('timerDisplay').innerText = `${hrs}:${mins}:${secs}`;
+    }
+
+    function checkSafetyLogic() {
+        const currentMins = secondsActive / 60;
+        if (currentMins >= (autoOffLimit * 0.7) && !alertShown) {
+            showAlert('warning', `Long duration detected (${Math.floor(currentMins)}m)`);
+            alertShown = true;
+        }
+        if (currentMins >= autoOffLimit) {
+            togglePower(true);
+            showAlert('critical', `Auto-Cut: Limit reached.`);
+        }
+    }
+
+    function togglePower(forceOff = false) {
+        if (forceOff) isOn = false;
+        else isOn = !isOn;
+
+        const halo = document.getElementById('mainHalo');
+        const hText = document.getElementById('haloText');
+        const pBtn = document.getElementById('powerBtn');
+        const title = document.getElementById('statusTitle');
+
+        if (isOn) {
+            halo.classList.remove('off');
+            hText.innerText = "ACTIVE";
+            pBtn.innerText = "Turn Off";
+            pBtn.style.background = "#00ffaa";
+            title.innerText = "Monitoring";
+            secondsActive = 0;
+            alertShown = false;
+        } else {
+            halo.classList.add('off');
+            hText.innerText = "OFF";
+            pBtn.innerText = "Turn On";
+            pBtn.style.background = "#4a5568";
+            title.innerText = "Disconnected";
+        }
+    }
+
+    function updateSettings() {
+        const val = document.getElementById('intervalInput').value;
+        autoOffLimit = parseInt(val);
+        document.getElementById('profileName').innerText = "Custom (" + val + "m)";
+        showAlert('warning', `Limit set to ${val}m`);
+    }
+
+    function showAlert(type, msg) {
+        const container = document.getElementById('alertContainer');
+        const div = document.createElement('div');
+        div.className = `alert alert-${type}`;
+        div.innerHTML = `<span>${msg}</span><button onclick="this.parentElement.remove()" style="background:none; border:none; color:inherit; font-size:1.2rem;">×</button>`;
+        container.prepend(div);
+        setTimeout(() => div.remove(), 6000);
+    }
+</script>
+
+</body>
+</html>
